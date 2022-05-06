@@ -75,5 +75,36 @@ def new_post(request):
     return render(request, 'FeedApp/new_post.html', context)
 
 
+'''
+comments class is different from others b/c we don't have a form for it. 
+Need to mannually create the fields.
+'''
+
+@login_required
+def comments(request, post_id): #post_id is needed b/c we have to link each comment to a particular post
+                                #Comments class in models.py file has post as a FK 
+    if request.method == 'POST' and request.POST.get("btn1"): #check if sending info to DB AND if "submit" button has been clicked (submit button variable = "btn1")
+        comment = request.POST.get("comment") #request.get() = getting text in comment box
+        Comment.objects.create(post_id=post_id, username=request.user,text=comment, date_added=date.today()) #capital C b/c refering to the Comments model (in model.py file)
+                                    #post = a field in Comments model, Django assigns it an ID automatically
+                                    #to call that ID, you use the DB column name_id
+                                    #we need the ID number, NOT the actual post text itself, to connect to a particular post
+
+                                    #need post_id, username, text, & date_added b/c those are the fields assigned in the Comments model
+                                        #creates a new row in comment model w/ those fields in the DB
+        
+
+    '''
+    once comment = created, refresh screen so shows up on the page
+    but need to get ALL comments on the post once comment = submitted
+    '''
+    comments = Comment.objects.filter(post=post_id)
+    post = Post.objects.get(id=post_id)
+
+    context = {'post':post,'comments':comments}
+    
+    return render(request, 'FeedApp/comments.html', context)
+
+
 
 

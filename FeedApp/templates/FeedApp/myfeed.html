@@ -32,7 +32,8 @@
     <tr style="border: 1px solid black;padding: 6px;">
         <td>{{p.date_posted}}</td>
         <td>Likes: &nbsp {{l}} &nbsp&nbsp&nbsp</td>
-        <td>Comments: &nbsp {{c}} &nbsp&nbsp</td>
+        <td>Comments: &nbsp <a href="{% url 'FeedApp:comments' p.id %}">{{c}}</a> &nbsp&nbsp</td>
+        <!--makes # of comments on post a hyperlink so we can post a comment. p.id = called post as p above, so p.id = post_id-->
     </tr>
     {% endfor %}
 </table>
