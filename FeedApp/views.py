@@ -45,8 +45,8 @@ def myfeed(request): #want to see all of our posts + all likes and comments
     posts = Post.objects.filter(username=request.user).order_by('-date_posted')#use filter if >1, use get() if only 1
                                                                                #order_by = descending order
     for p in posts:
-        c_count = Comment.objects.filter(posts=p).count()#provides number of comments on each post
-        l_count = Like.objects.filter(posts=p).count() #provides number of likes on each post
+        c_count = Comment.objects.filter(post=p).count()#provides number of comments on each post
+        l_count = Like.objects.filter(post=p).count() #provides number of likes on each post
         comment_count_list.append(c_count)
         like_count_list.append(l_count)
 
@@ -64,7 +64,7 @@ def new_post(request):
     if request.method != 'POST':
         form = PostForm()
     else: 
-        form=PostForm(request.POST, request.FILE) #Pull all the data from the PostForm and the images
+        form=PostForm(request.POST, request.FILES) #Pull all the data from the PostForm and the images
         if form.is_valid():
            new_post = form.save(commit=False) #don't write to DB yet (don't have username info yet), just save instance.
            new_post.username=request.user

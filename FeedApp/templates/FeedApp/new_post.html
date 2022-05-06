@@ -7,7 +7,7 @@
 </h2>
 <!--heading-->
 
-<form action="{% url 'FeedApp:new_post' %}" method='post' enctype="multipart/form-data">
+<form action="{% url 'FeedApp:new_post' %}" method='post' enctype='multipart/form-data'>
     <!--enctype = for uploaded files/images to be attached to the request properly. lets files get attached to post-->
 
     {% csrf_token %}
@@ -16,7 +16,7 @@
 
     <br><br>
     <!--hardcoded returns-->
-    <button name="submit" class=" btn btn-outline-primary">Update</button>
+    <button name="submit" class=" btn btn-outline-primary">Post</button>
     <!--class = when you hover over the button, it turns dark blue-->
 </form>
 {% endblock content %}
