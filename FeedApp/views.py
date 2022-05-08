@@ -137,7 +137,7 @@ def comments(request, post_id): #post_id is needed b/c we have to link each comm
 @login_required
 def friends(request):
     #get the admin_profile and user profile to create the first relationship
-    admin_profile = Profile.objects.get(user=1)
+    admin_profile = Profile.objects.get(user=2)
     user_profile = Profile.objects.get(user=request.user)
 
     #to get User's Friends
