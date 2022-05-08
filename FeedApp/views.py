@@ -1,3 +1,4 @@
+from django.dispatch import receiver
 from django.shortcuts import render, redirect
 from .forms import PostForm,ProfileForm, RelationshipForm
 from .models import Post, Comment, Like, Profile, Relationship
@@ -74,6 +75,35 @@ def new_post(request):
     context= {'form':form}
     return render(request, 'FeedApp/new_post.html', context)
 
+@login_required
+def friendsfeed(request):
+    comment_count_list = []
+    like_count_list = [] #create empty lists b/c there are multiple comments 
+    friends=Profile.objects.filter(user=request.user).values('friends')
+    posts = Post.objects.filter(username__in=friends).order_by('-date_posted')#use filter if >1, use get() if only 1
+                                                                               #order_by = descending order
+    for p in posts:
+        c_count = Comment.objects.filter(post=p).count()#provides number of comments on each post
+        l_count = Like.objects.filter(post=p).count() #provides number of likes on each post
+        comment_count_list.append(c_count)
+        like_count_list.append(l_count)
+
+    #iterate through the comments and likes of each post together
+    zipped_list = zip(posts,comment_count_list,like_count_list)
+
+    #check to see if "Like" button was clicked
+    if request.method == 'POST' and request.POST.get("like"):
+        post_to_like = request.POST.get("like") #getting the value of the "like" button, which is the post_id (from line 36 in friendsfeed template)
+        print(post_to_like)
+        #keep same person from liking post multiple times
+        like_already_exists = Like.objects.filter(post_id=post_to_like,username=request.user) #if the same user has already liked the same post_id
+        if not like_already_exists.exists():
+            Like.objects.create(post_id=post_to_like,username=request.user)
+            return redirect("FeedApp:friendsfeed") #redirects user back to the friendsfeed (essentially refreshes the page)
+
+    context = {'posts':posts, 'zipped_list': zipped_list} #context is how we pass all of the things in this function to myfeed in urls?
+    return render(request, 'FeedApp/friendsfeed.html', context)
+
 
 '''
 comments class is different from others b/c we don't have a form for it. 
@@ -102,9 +132,69 @@ def comments(request, post_id): #post_id is needed b/c we have to link each comm
     post = Post.objects.get(id=post_id)
 
     context = {'post':post,'comments':comments}
-    
     return render(request, 'FeedApp/comments.html', context)
 
+@login_required
+def friends(request):
+    #get the admin_profile and user profile to create the first relationship
+    admin_profile = Profile.objects.get(user=1)
+    user_profile = Profile.objects.get(user=request.user)
+
+    #to get User's Friends
+    user_friends = user_profile.friends.all()
+    user_friends_profiles = Profile.objects.filter(user__in=user_friends)
+
+    #get list of Friend Requests sent
+    user_relationships = Relationship.objects.filter(sender=user_profile)
+    request_sent_profiles = user_relationships.values('receiver') #sender and receiver are FK in the Relationship object in models.py file
+
+    #list of who we can send friend requests to
+        #show everyone in the system who the user is not already friends with + exclude user + exclude friend requests alrady sent
+    all_profiles = Profile.objects.exclude(user=request.user).exclude(id__in=user_friends_profiles).exclude(id__in=request_sent_profiles)
+
+    #get friend requests received by the user
+    request_received_profiles = Relationship.objects.filter(receiver=user_profile,status='sent')
+
+    #create user's 1st relationship w/ admin (if this is the first time to access friend request page)
+        #need to do this b/c relationship table needs to have at least 1 row in it for the program to run smoothly
+    if not user_relationships.exists(): #'filter' works with exists, 'get' doesn't
+        Relationship.objects.create(sender=user_profile,receiver=admin_profile,status='sent') #need user/admin profiles bc their profile objects in models.py file
+        #relationship = Relationship.objects.filter(sender=user_profile,status='sent')
+
+    #check to see WHICH submit button was pressed (sending a friend request or accepting a friend request)
+
+    #this is to process all send requests
+    if request.method == 'POST' and request.POST.get("send_requests"): #if button pressed = "send requests"
+        receivers = request.POST.getlist("send_requests") #getlist b/c this will be checkboxes in HTML and multiple can be checked
+                                                        #value of checkbox = ID of user
+        print(receivers)
+        for receiver in receivers:
+            receiver_profile = Profile.objects.get(id=receiver)
+            Relationship.objects.create(sender=user_profile, receiver=receiver_profile, status='sent')
+        return redirect('FeedApp:friends') #keeps them on the same page
+
+    #this is to process all receive requests
+    if request.method == 'POST' and request.POST.get("receive_requests"): #if button pressed = "receive_requests"
+        senders = request.POST.getlist("receive_requests") #getlist b/c this will be checkboxes in HTML and multiple can be checked
+        
+        for sender in senders:
+            #update relationship model for the sender to status = 'accepted'
+            Relationship.objects.filter(id=sender).update(status='accepted')
+
+            #create a relationship object to access the sender's user id
+            #to add to the friends list of the user
+            relationship_obj = Relationship.objects.get(id=sender)
+            user_profile.friends.add(relationship_obj.sender.user) #.sender.user = get the ID of the user who sent the request and add that user_id to the list of friends for the current usesr
+
+            #add the user (user B) to the friends list of the sender's (user A) profile
+            relationship_obj.sender.friends.add(request.user) #relationship_obj.sender = represents a profile, .friends = that profile's friends, .add = adds current user (user B) to sender's (user A) friend list
+        
+    context = {'user_friends_profiles': user_friends_profiles, 'user_relationships':user_relationships, 
+                'all_profiles':all_profiles, 'request_received_profiles': request_received_profiles}
+    return render(request, 'FeedApp/friends.html', context)
+
+
+    
 
 
 
